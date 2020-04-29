@@ -39,13 +39,12 @@ def moveFile(file, destination):
     if not os.path.exists(destinationFile):
         shutil.copy(sourcePath, destinationFile)
 
-
 def get_args():
     import argparse
 
     description = (
         "Sort files recoverd by Photorec.\n"
-        "The input files are first copied to the destination, sorted by file type.\n"
+        "The input files are first copied or moved to the destination, sorted by file type.\n"
         "Then JPG files are sorted based on creation year (and optionally month).\n"
         "Finally any directories containing more than a maximum number of files are accordingly split into separate directories."
     )
@@ -54,12 +53,12 @@ def get_args():
     parser.add_argument('source', metavar='src', type=str, help='source directory with files recovered by Photorec')
     parser.add_argument('destination', metavar='dest', type=str, help='destination directory to write sorted files to')
     parser.add_argument('-n', '--max-per-dir', type=int, default=500, required=False, help='maximum number of files per directory')
-    parser.add_argument('-m', '--split-months', action='store_true', required=False, help='split JPEG files not only by year but by month as well')
+    parser.add_argument('-s', '--split-months', action='store_true', required=False, help='split JPEG files not only by year but by month as well')
     parser.add_argument('-k', '--keep_filename', action='store_true', required=False, help='keeps the original filenames when copying')
     parser.add_argument('-d', '--min-event-delta', type=int, default=4, required=False, help='minimum delta in days between two days')
+    parser.add_argument('-m', '--move-file', action='store_true', help='move the file to dst')
 
     return parser.parse_args()
-
 
 
 maxNumberOfFilesPerFolder = 500
@@ -67,7 +66,7 @@ splitMonths = False
 source = None
 destination = None
 keepFilename = False
-
+moveFile = False
 
 args = get_args()
 source = args.source
@@ -76,6 +75,7 @@ maxNumberOfFilesPerFolder = args.max_per_dir
 splitMonths = args.split_months
 keepFilename = args.keep_filename
 minEventDeltaDays = args.min_event_delta
+moveFile = args.move_file
 
 print("Reading from source '%s', writing to destination '%s' (max %i files per directory, splitting by year %s)." %
     (source, destination, maxNumberOfFilesPerFolder, splitMonths and "and month" or "only"))
@@ -92,7 +92,11 @@ while ((destination is None) or (not os.path.exists(destination))):
 fileNumber = getNumberOfFilesInFolderRecursively(source)
 onePercentFiles = int(fileNumber/100)
 totalAmountToCopy = str(fileNumber)
-print("Files to copy: " + totalAmountToCopy)
+
+if moveFile is True:
+    print("Files to move: " + totalAmountToCopy)
+else:
+    print("Files to copy: " + totalAmountToCopy)
 
 
 fileCounter = 0
@@ -113,7 +117,10 @@ for root, dirs, files in os.walk(source, topdown=False):
 
         destinationFile = os.path.join(destinationDirectory, fileName)
         if not os.path.exists(destinationFile):
-            shutil.copy2(sourcePath, destinationFile)
+            if moveFile is True:
+                shutil.move(sourcePath, destinationDirectory)
+            else:
+               shutil.copy2(sourcePath, destinationFile)
 
         fileCounter += 1
         if((fileCounter % onePercentFiles) is 0):
